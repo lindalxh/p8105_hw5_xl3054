@@ -1,0 +1,44 @@
+---
+title: "p8105_hw5_xl3054"
+author: "Xinhui Lin"
+date: "2025-11-05"
+output: html_document
+---
+
+# Problem 1
+```{r}
+# write function
+set.seed(123)
+duplicate_bd = function(n) {
+  bdays = sample(1:365, size = n, replace = TRUE)  ## uniform distributed between 1-365
+  return(any(duplicated(bdays)))  ## returns TRUE or FALSE for duplicate birthdays
+}
+
+# calculate probability - at least two people share
+group_size = 2:50
+prob_dup = numeric(length(group_size))
+
+for (i in 1:length(group_size)) {
+  n = group_size[i]
+  count = 0
+  for (j in 1:10000){
+    if(duplicate_bd(n)){
+      count = count+1
+    }
+  }
+  prob_dup[i] = count/10000
+}
+prob_dup
+
+# plot
+library(tidyverse)
+data.frame(group_size = group_size, prob_dup = prob_dup) %>% 
+  ggplot(aes(x = group_size, y = prob_dup)) +
+  geom_line() +
+  geom_point() +
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "red") +
+  labs(x = "Group size", y = "Probability", title = "Share birthday simulation") +
+  theme_minimal()
+```
+
+

@@ -2,7 +2,7 @@
 title: "p8105_hw5_xl3054"
 author: "Xinhui Lin"
 date: "2025-11-05"
-output: html_document
+output: github_document
 ---
 
 # Problem 1
@@ -40,5 +40,128 @@ data.frame(group_size = group_size, prob_dup = prob_dup) %>%
   labs(x = "Group size", y = "Probability", title = "Share birthday simulation") +
   theme_minimal()
 ```
+
+In general, the simulation shows the probability of at least two people have the same birthday increases as group size increases. The group size does not need to be very large to have repeated birthdays. The results show that we only need around 23 people in a room to have a probability of 0.5 of two people sharing a birthday. When the group size reaches around 40, the probability is above 0.9, and when 50, the probability is 0.97, very close to 1.
+
+
+# Problem 2
+```{r}
+n = 30
+sigma = 5
+mu = 0
+results = data.frame()
+
+set.seed(123)
+for (i in 1:5000) {
+  x = rnorm(n, mean = mu, sd = sigma)
+  test = broom::tidy(t.test(x))
+  results = rbind(results, data.frame(
+    true_mu = 0,
+    est_mu  = pull(test, estimate),
+    p_value = pull(test, p.value),
+    reject = pull(test, p.value)<0.05))
+}
+
+# repeat for 1:6
+set.seed(123)
+for (mu_s in 1:6) {
+  for (i in 1:5000) {
+    x = rnorm(n, mean = mu_s, sd = sigma)
+    test = broom::tidy(t.test(x))
+    results = rbind(results, data.frame(
+      true_mu = mu_s,
+      est_mu  = pull(test, estimate),
+      p_value = pull(test, p.value),
+      reject = pull(test, p.value)<0.05))
+  }
+}
+
+# plot
+results %>%
+  group_by(true_mu) %>%
+  summarize(power = mean(reject)) %>% 
+  ggplot(aes(x = true_mu, y = power)) +
+  geom_point() + 
+  geom_line() +
+  labs(x = "True mean/Effect size", y = "Power", title = "Power vs Effect Size") +
+  theme_minimal()
+```
+
+As the true mean increases, power of the the test also increases. Power is close to 0 when true mean is close to 0, harder to detect. When true mean reaches 4 and above, the power is close to 1. Larger effect sizes are easier to detect with a higher power.
+
+```{r}
+avg_all = results %>%
+  group_by(true_mu) %>%
+  summarize(avg_est = mean(est_mu)) %>% 
+  mutate(group = factor("All samples", levels = c("All samples","Rejected")))
+
+avg_rejected = results %>%
+  filter(reject) %>%
+  group_by(true_mu) %>%
+  summarize(avg_est_reject = mean(est_mu)) %>% 
+  mutate(group = factor("Rejected", levels = c("All samples","Rejected")))
+
+ggplot() +
+  geom_line(data = avg_all, aes(true_mu, avg_est, color = group)) +
+  geom_point(data = avg_all, aes(true_mu, avg_est, color = group)) +
+  geom_line(data = avg_rejected, aes(true_mu, avg_est_reject, color = group)) +
+  geom_point(data = avg_rejected, aes(true_mu, avg_est_reject, color = group)) +
+  scale_color_manual(values = c("All samples" = "black", "Rejected" = "red"),
+                     breaks = c("All samples","Rejected"),
+                     labels = c("All samples","Rejected only")) +
+  labs(x = "True mean", y = "Average mean_hat", color = "Samples",
+       title = "Estimated mean vs True mean") +
+  theme_minimal()
+```
+
+When the true mean is lower, the sample average of $\hat{\mu}$ among rejected tests is higher than the true value of $\mu$. Once the true mean reaches about 4, the two values become very similar. This happens because when the true mean is small, the null is only rejected in samples where the estimate was unusually high, so the average is biased upward. When the true mean gets larger, almost all samples reject, so the average is close to the true value.
+
+# Problem 3
+```{r}
+homicide = read_csv("data/homicide-data.csv") %>% 
+  janitor::clean_names()
+```
+
+The `homicide` dataset has `r nrow(homicide)` observations of criminal homicides over past decade in 50 cities in the US and 12 variables describing the demographic information of each victim, ID, date, location of each case, and whether an arrest was made.
+
+```{r}
+city_unsolved = homicide %>% 
+  mutate(city_state = paste0(city, ", ", state),
+         unsolved = disposition %in% c("Closed without arrest", "Open/No arrest")) %>% 
+  group_by(city_state) %>% 
+  summarize(total = n(),
+            unsolved = sum(unsolved))
+
+# Baltimore
+city_unsolved %>% 
+  filter(city_state == "Baltimore, MD") %>% 
+  reframe(broom::tidy(prop.test(unsolved, total))) %>% 
+  mutate(city_state = "Baltimore, MD") %>% 
+  select(city_state, estimate, conf.low, conf.high) %>% 
+  knitr::kable(digits = 4)
+
+# all cities
+city_results = city_unsolved %>%
+  mutate(test = purrr::map2(unsolved, total, ~ suppressWarnings(prop.test(.x, .y))),
+         tidy = purrr::map(test, broom::tidy)) %>%
+  unnest(tidy) %>%
+  select(city_state, estimate, conf.low, conf.high) %>% 
+  arrange(desc(estimate))
+
+city_results %>% knitr::kable(digits = 4)
+
+# plot
+city_results %>%
+  arrange(desc(estimate)) %>%
+  mutate(city_state = factor(city_state, levels = city_state)) %>%
+  ggplot(aes(x = estimate, y = city_state)) +
+  geom_point(size = 2) +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0) +
+  labs(x = "Proportion unsolved (95% CI)", y = "City, State",
+       title = "Unsolved Homicides by City") +
+  theme_minimal() +
+  theme(axis.text.y = element_text(size = 6))
+```
+
 
 

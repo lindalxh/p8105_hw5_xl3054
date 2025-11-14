@@ -123,7 +123,7 @@ homicide = read_csv("data/homicide-data.csv") %>%
   filter(!(city == "Tulsa" & state == "AL"))
 ```
 
-In the original `homicide` dataset, there are 52,179 observations of criminal homicides over past decade in 51 cities in the US. However, there is one observation with city "Tulsa" and state "AL", which is not a real existed city in Alabama. After removing this row, there are `r nrow(homicide)` observations of criminal homicides in 50 cities in the US. There are 12 variables describing the demographic information of each victim, ID, date, location of each case, and whether an arrest was made.
+In the original `homicide` dataset, there are 52,179 observations of criminal homicides over past decade in 51 cities in the US. However, there is one observation with city "Tulsa" and state "AL", which is not a real existed city in Alabama. After removing this row, there are `r nrow(homicide)` observations of criminal homicides in 50 cities in the US. There are 12 columns describing the demographic information of each victim, ID, date, location of each case, and whether an arrest was made.
 
 ```{r}
 city_unsolved = homicide %>% 

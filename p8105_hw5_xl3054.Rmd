@@ -119,10 +119,11 @@ When the true mean is lower, the sample average of $\hat{\mu}$ among rejected te
 # Problem 3
 ```{r}
 homicide = read_csv("data/homicide-data.csv") %>% 
-  janitor::clean_names()
+  janitor::clean_names() %>%
+  filter(!(city == "Tulsa" & state == "AL"))
 ```
 
-The `homicide` dataset has `r nrow(homicide)` observations of criminal homicides over past decade in 50 cities in the US and 12 variables describing the demographic information of each victim, ID, date, location of each case, and whether an arrest was made.
+In the original `homicide` dataset, there are 52,179 observations of criminal homicides over past decade in 51 cities in the US. However, there is one observation with city "Tulsa" and state "AL", which is not a real existed city in Alabama. After removing this row, there are `r nrow(homicide)` observations of criminal homicides in 50 cities in the US. There are 12 variables describing the demographic information of each victim, ID, date, location of each case, and whether an arrest was made.
 
 ```{r}
 city_unsolved = homicide %>% 
@@ -142,7 +143,7 @@ city_unsolved %>%
 
 # all cities
 city_results = city_unsolved %>%
-  mutate(test = purrr::map2(unsolved, total, ~ suppressWarnings(prop.test(.x, .y))),
+  mutate(test = purrr::map2(unsolved, total, ~prop.test(.x, .y)),
          tidy = purrr::map(test, broom::tidy)) %>%
   unnest(tidy) %>%
   select(city_state, estimate, conf.low, conf.high) %>% 
@@ -155,7 +156,7 @@ city_results %>%
   arrange(desc(estimate)) %>%
   mutate(city_state = factor(city_state, levels = city_state)) %>%
   ggplot(aes(x = estimate, y = city_state)) +
-  geom_point(size = 2) +
+  geom_point(size = 1.5) +
   geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0) +
   labs(x = "Proportion unsolved (95% CI)", y = "City, State",
        title = "Unsolved Homicides by City") +
